@@ -1,4 +1,4 @@
-# IF.Data
+# BCB.Data
 
 Algumas funções para explorar a API do Banco Central com dados de conglomerados e instituições financeiras, bem como os dados do Painel de Operações de Crédito (SCR).
 
