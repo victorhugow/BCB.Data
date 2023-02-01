@@ -40,4 +40,3 @@ get_scr_data <- function(ano_incial, ano_final){
 })
   
 }
-
