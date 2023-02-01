@@ -10,7 +10,7 @@ Algumas funções para explorar a API do Banco Central com dados de conglomerado
 
         -   get_relatorios(): baixa os relatórios do [IF.Data](https://www3.bcb.gov.br/ifdata).
 
-2.  SCR.data
+2.  [SCR.data](https://dadosabertos.bcb.gov.br/dataset/scr_data)
 
     -   get_scr_data.R
 
