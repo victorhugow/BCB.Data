@@ -15,3 +15,5 @@ Algumas funções para explorar a API do Banco Central com dados de conglomerado
     -   get_scr_data.R
 
         -   get_scr_data: retorna os saldos de operações de crédito (saldo total, saldo inadimplente, ativo problemático etc.) com quebras para estado, tipo de instituição bancária (Tcb), indexador, pessoa, modalidade, atividade (CNAE).
+
+Uma documentação melhor está sendo construída :).
