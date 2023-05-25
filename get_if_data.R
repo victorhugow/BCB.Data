@@ -79,3 +79,138 @@ get_relatorios <- function(ano_inicial, ano_final, tipo_instituicao, tipo_relato
     return(relatorio_disp_list)
 }
 
+#Balancetes
+get_balancetes <- function(data_inicial, data_final, tipo_instituicao = c('all','individuais', 'prudencial', 'cooperativas', 'liquidacao')){
+  
+          #Funções para cada tipo de instituição em breve com tratamento
+          get_balancetes_individuais <- function(data_inicial, data_final){
+            
+            #Criando o periodo de download
+            mes_ano <- seq.Date(from = as.Date(data_inicial), to=as.Date(data_final), by = '1 months')[-1] %>% format('%Y%m')
+            temp_dir <- tempdir()
+            url =   paste0('https://www4.bcb.gov.br/fis/cosif/cont/balan/bancos/', mes_ano, 'BANCOS.ZIP')
+            nome_arquivo = paste0(temp_dir,'\\BANCOS_',  mes_ano ,'.zip')
+            
+            #Baixa e unzipa tudo
+            files_to_read = map2(.x = url, .y = nome_arquivo, function(x,y){
+              curl::curl_download(url = x, destfile = y, quiet = T)
+              f = utils::unzip(zipfile = y,exdir = temp_dir,
+                               junkpaths = TRUE, overwrite = T)
+              return(f)
+            })
+            files_to_read=files_to_read %>% unlist()
+            df=map_df(files_to_read, function(x) data.table::fread(x, skip = 3, sep = ';', encoding = 'Latin-1', dec = ',')[,`#DATA_BASE` := fix_date(`#DATA_BASE`)])
+            colnames(df)[1] <- 'DATA_BASE'
+            file.remove(files_to_read)
+            return(df)}
+          get_balancetes_prudencial <- function(data_inicial, data_final){
+            #Criando o periodo de download
+            mes_ano <- seq.Date(from = as.Date(data_inicial), to=as.Date(data_final), by = '1 months')[-1] %>% format('%Y%m')
+            temp_dir <- tempdir()
+            url =   paste0('https://www4.bcb.gov.br/fis/cosif/cont/balan/prudencial/', mes_ano, 'BLOPRUDENCIAL.ZIP')
+            nome_arquivo = paste0(temp_dir,'\\BANCOS_',  mes_ano ,'.zip')
+            #Baixa e unzipa tudo
+            files_to_read = map2(.x = url, .y = nome_arquivo, function(x,y){
+              curl::curl_download(url = x, destfile = y, quiet = T)
+              f = utils::unzip(zipfile = y,exdir = temp_dir,
+                               junkpaths = TRUE, overwrite = T)
+              return(f)
+            })
+            files_to_read=files_to_read %>% unlist()
+            df=map_df(files_to_read, function(x) data.table::fread(x, sep = ';', encoding = 'Latin-1', dec = ',')[,`#DATA_BASE` := fix_date(`#DATA_BASE`)])
+            
+            colnames(df)[1] <- 'DATA_BASE'
+            file.remove(files_to_read)
+            return(df)}
+          get_balancetes_coopcr <- function(data_inicial, data_final){
+            #Cooperativas de Crédito
+            #Criando o periodo de download
+            
+            mes_ano <- seq.Date(from = as.Date(data_inicial), to=as.Date(data_final), by = '1 months')[-1] %>% format('%Y%m')
+            temp_dir <- tempdir()
+            url =   paste0('https://www4.bcb.gov.br/fis/cosif/cont/balan/cooperativas/', mes_ano, 'COOPERATIVAS.ZIP')
+            nome_arquivo = paste0(temp_dir,'\\BANCOS_',  mes_ano ,'.zip')
+            
+            #Baixa e unzipa tudo
+            files_to_read = map2(.x = url, .y = nome_arquivo, function(x,y){
+              curl::curl_download(url = x, destfile = y, quiet = T)
+              f = utils::unzip(zipfile = y,exdir = temp_dir,
+                               junkpaths = TRUE, overwrite = T)
+              return(f)
+            })
+            files_to_read=files_to_read %>% unlist()
+            df=map_df(files_to_read, function(x) data.table::fread(x, sep = ';', encoding = 'Latin-1', dec = ',')[,`#DATA_BASE` := fix_date(`#DATA_BASE`)])
+            
+            colnames(df)[1] <- 'DATA_BASE'
+            file.remove(files_to_read)
+            return(df)}
+          get_balancetes_regesp <- function(data_inicial, data_final){
+            #Criando o periodo de download
+            mes_ano <- seq.Date(from = as.Date(data_inicial), to=as.Date(data_final), by = '1 months')[-1] %>% format('%Y%m')
+            temp_dir <- tempdir()
+            url =   paste0('https://www4.bcb.gov.br/fis/cosif/cont/balan/liquidacao/', mes_ano, 'LIQUIDACAO.ZIP')
+            nome_arquivo = paste0(temp_dir,'\\BANCOS_',  mes_ano ,'.zip')
+            #Baixa e unzipa tudo
+            files_to_read = map2(.x = url, .y = nome_arquivo, function(x,y){
+              curl::curl_download(url = x, destfile = y, quiet = T)
+              f = utils::unzip(zipfile = y,exdir = temp_dir,
+                               junkpaths = TRUE, overwrite = T)
+              return(f)
+            })
+            files_to_read=files_to_read %>% unlist()
+            df=map_df(files_to_read, function(x) data.table::fread(x, sep = ';', encoding = 'Latin-1', dec = ',')[,`#DATA_BASE` := fix_date(`#DATA_BASE`)])
+            
+            colnames(df)[1] <- 'DATA_BASE'
+            file.remove(files_to_read)
+            return(df)}
+          
+          lista_tipo_instituicao = map(
+            tipo_instituicao,
+            function(x){
+              switch(
+                x,
+                'individuais' = get_balancetes_individuais(data_inicial, data_final),
+                'prudencial' = get_balancetes_prudencial(data_inicial, data_final),
+                'cooperativas' = get_balancetes_coopcr(data_inicial, data_final),
+                'liquidacao' = get_balancetes_regesp(data_inicial, data_final)
+              )
+            }
+          )
+          
+          names(lista_tipo_instituicao) <- tipo_instituicao
+          
+          lista_tipo_instituicao
+}
+
+#Dados do DASFN
+#Cadastro dos Conglomerados e Instiuições 
+# get_dasfn_pilar3 <- function(ano_mes){
+#   require(httr)
+#   require(jsonlite)
+#   api_call <- paste0("https://olinda.bcb.gov.br/olinda/servico/DASFN/versao/v1/odata/Recursos?$filter=Api%20eq%20'pilar3'&$format=json")
+#   raw_response <- GET(api_call)
+#   resp_char <- rawToChar(raw_response$content)
+#   Encoding(resp_char) <- "UTF-8"
+#   parsed <- fromJSON(resp_char, flatten = T)$value
+#   return(parsed)
+# }
+# 
+# df = get_dasfn_pilar3()
+# 
+# library(zoo)
+# df_ = df %>% filter(str_detect(NomeInstituicao, 'ITAU')) %>% mutate(Data = as.Date(paste0(Argumento,'-01'), '%Y-%m-%d')) %>% filter(Data >= '2022-01-01')
+# library(tidyverse)
+# 
+# df2 = map(df_$URLDados,
+#     
+#   function(x){
+#     try({  
+#       raw_response <- GET(x)
+#       resp_char <- rawToChar(raw_response$content)
+#       Encoding(resp_char) <- "UTF-8"
+#       resp_char
+#     })
+#       }
+#     )
+# 
+# df2[[52]] %>% fromJSON()

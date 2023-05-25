@@ -13,7 +13,7 @@ fix_date <- function(x){as.Date(paste0(x, '01'), '%Y%m%d')}
 #Agrupa tudo conglomerados prudenciais a partir dos dados de cadastro
 agrupa_prudencial = function(x){
   
-  cadastro <- readRDS('dados/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
+  cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
     mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial)) %>%
     ungroup() %>%
     select(CodInst, Data, NomeInstituicao, Tcb, SegmentoTb, Atividade, 
@@ -81,4 +81,26 @@ ajuste_dre = function(x){
     group_by(Ano,Semestre,TipoInstituicao, CodInst, NomeRelatorio, NumeroRelatorio, Grupo, Conta) %>%
     mutate(Saldo = ifelse(lubridate::month(Data) %in% c(6,12), Saldo[2]-Saldo[1], Saldo)) %>%
     ungroup() %>% select(-Trimestre, -Semestre, -Ano)
+}
+
+#Ajustar Fintechs com 2 instituições no relatório de conglomerados prudenciais — que pertencem a um mesmo conglomerado prudencial.
+ajusta_indicadores_prudencial = function(x){
+  # #Ajustar Fintechs com 2 instituições no relatório de conglomerados prudenciais — que pertencem a um mesmo conglomerado prudencial. No caso, se o valor de uma for NA ou nulo, substituir pelo valor da outra. 
+  # E no final, ficar somente com a instiuição que tem Prudencial no Nome ou cujo CodInst comece com C. Vale sobretudo para o relatório de Capital
+  
+  cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
+    mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial))
+
+  df_ajustado = x %>%
+    merge(., cadastro[,c('Data',"CodInst", 'CodConglomeradoPrudencial', "NomeInstituicao")], all.x=T, by = c('CodInst', 'Data')) %>%
+    group_by(Data) %>% mutate(dupPrudencial = dup_check(CodConglomeradoPrudencial)) %>% ungroup() %>% #Quem está duplicado?
+    arrange(CodConglomeradoPrudencial,CodInst,Data) %>%
+    group_by(CodConglomeradoPrudencial, Data) %>%
+    mutate_at(vars(-1,-2),~ ifelse(is.na(.),.[!is.na(.)][1L],.)) %>%
+    ungroup() %>%
+    mutate(drop = ifelse(dupPrudencial & !str_detect(CodInst, '^C'), 1, 0)) %>%
+    filter(drop == 0) %>%
+    select(-drop, -dupPrudencial, -NomeInstituicao, -CodConglomeradoPrudencial) 
+  
+  return(df_ajustado)
 }
