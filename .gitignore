@@ -37,3 +37,11 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 .secrets
+*.xlsx
+*.rds
+*.csv
+*.pdf
+*.pbix
+*.html
+*.zip
+*.css
