@@ -1,5 +1,4 @@
 #Funções
-
 library(tidyverse)
 
 dup_check = function(x) c(duplicated(x, fromLast = TRUE)  | duplicated(x))
@@ -10,20 +9,36 @@ fix_date <- function(x){as.Date(paste0(x, '01'), '%Y%m%d')}
 
 `%nin%` = Negate(`%in%`)
 
+cadastro_agrupa_prudencial <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
+  mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial)) %>%
+  ungroup() %>%
+  select(CodInst, Data, NomeInstituicao, Tcb, SegmentoTb, Atividade, 
+         CodConglomeradoFinanceiro, CodConglomeradoPrudencial, CnpjInstituicaoLider, Situacao)
+
 #Agrupa tudo conglomerados prudenciais a partir dos dados de cadastro
 agrupa_prudencial = function(x){
-  
-  cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
-    mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial)) %>%
-    ungroup() %>%
-    select(CodInst, Data, NomeInstituicao, Tcb, SegmentoTb, Atividade, 
-           CodConglomeradoFinanceiro, CodConglomeradoPrudencial, CnpjInstituicaoLider, Situacao)
-  
+
   x %>%
-    merge(.,cadastro[,c('Data','CodInst', 'CodConglomeradoPrudencial')], by = c('Data','CodInst'),all.x=T) %>%
+    merge(.,cadastro_agrupa_prudencial[,c('Data','CodInst', 'CodConglomeradoPrudencial')], by = c('Data','CodInst'),all.x=T) %>%
     unique() %>%
     select(-CodInst) %>%
     group_by(Data,CodConglomeradoPrudencial) %>%
+    summarise_all(sum, na.rm=T) %>% ungroup() %>%
+    rename(CodInst=CodConglomeradoPrudencial)
+}
+
+
+agrupa_prudencial_2 = function(x){
+  # cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
+  #   mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial)) %>%
+  #   ungroup() %>%
+  #   select(CodInst, Data, NomeInstituicao, Tcb, SegmentoTb, Atividade, 
+  #          CodConglomeradoFinanceiro, CodConglomeradoPrudencial, CnpjInstituicaoLider, Situacao)
+  x %>%
+    merge(.,cadastro_agrupa_prudencial[,c('Data','CodInst', 'CodConglomeradoPrudencial')], by = c('Data','CodInst'),all.x=T) %>%
+    unique() %>%
+    select(-CodInst) %>%
+    group_by(Data,CodConglomeradoPrudencial, Grupo, Tipo) %>%
     summarise_all(sum, na.rm=T) %>% ungroup() %>%
     rename(CodInst=CodConglomeradoPrudencial)
 }
@@ -88,11 +103,11 @@ ajusta_indicadores_prudencial = function(x){
   # #Ajustar Fintechs com 2 instituições no relatório de conglomerados prudenciais — que pertencem a um mesmo conglomerado prudencial. No caso, se o valor de uma for NA ou nulo, substituir pelo valor da outra. 
   # E no final, ficar somente com a instiuição que tem Prudencial no Nome ou cujo CodInst comece com C. Vale sobretudo para o relatório de Capital
   
-  cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
-    mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial))
+  # cadastro <- readRDS('dados/ifdata/raw/cadastro_instituicao.rds')  %>% mutate(Data = Data %>% fix_date()) %>%
+  #   mutate(CodConglomeradoPrudencial = ifelse(is.na(CodConglomeradoPrudencial), CodInst, CodConglomeradoPrudencial))
 
   df_ajustado = x %>%
-    merge(., cadastro[,c('Data',"CodInst", 'CodConglomeradoPrudencial', "NomeInstituicao")], all.x=T, by = c('CodInst', 'Data')) %>%
+    merge(., cadastro_agrupa_prudencial[,c('Data',"CodInst", 'CodConglomeradoPrudencial', "NomeInstituicao")], all.x=T, by = c('CodInst', 'Data')) %>%
     group_by(Data) %>% mutate(dupPrudencial = dup_check(CodConglomeradoPrudencial)) %>% ungroup() %>% #Quem está duplicado?
     arrange(CodConglomeradoPrudencial,CodInst,Data) %>%
     group_by(CodConglomeradoPrudencial, Data) %>%

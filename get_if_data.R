@@ -41,7 +41,7 @@ get_instituicoes_financeiras <- function(ano_mes){
 }
 
 #Função para conectar a API e baixar
-get_if_data <- function(tipo_relatorio = 'T', tipo_instituicao,ano_mes){
+get_if_data <- function(tipo_relatorio = 'T', tipo_instituicao, ano_mes){
   require(httr)
   require(jsonlite)
   api_call <- paste0("https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/IfDataValores(AnoMes=@AnoMes,TipoInstituicao=@TipoInstituicao,Relatorio=@Relatorio)?@AnoMes=", ano_mes, 
@@ -75,7 +75,7 @@ get_relatorios <- function(ano_inicial, ano_final, tipo_instituicao, tipo_relato
                               function(x) relatorios_cong_fin[NomeRelatorio==x])
     names(relatorio_disp_list) <- relatorio_disp
     relatorio_disp_list <- lapply(relatorio_disp_list, function(x) x %>% mutate(Data = fix_date(AnoMes)))
-    
+  
     return(relatorio_disp_list)
 }
 
